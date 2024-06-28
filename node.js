@@ -7,7 +7,7 @@ const sheets = google.sheets('v4');
 
 // Konfigurasi Google Sheets API
 const auth = new google.auth.GoogleAuth({
-  keyFile: 'credentials.json', // Ganti dengan path ke file kredensial Google Cloud Anda
+  keyFile: 'airy-boulevard-427809-s2-d078c3ed7f4a.json', // Ganti dengan path ke file kredensial Google Cloud Anda
   scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
 });
 
