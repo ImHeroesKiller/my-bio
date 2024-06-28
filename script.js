@@ -19,11 +19,14 @@ function loadCSV(callback) {
 
 function parseCSV(data) {
   const lines = data.split('\n');
-  return lines.map(line => line.split(','));
+  return lines.map(line => {
+    const columns = line.split(',');
+    return columns.map(column => column.trim());
+  });
 }
 
 function displayContent(data) {
-  // Removing the header row
+  // Menghapus header row
   data.shift();
 
   data.forEach(row => {
@@ -45,3 +48,4 @@ function displayContent(data) {
     }
   });
 }
+
