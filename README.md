@@ -53,7 +53,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contact
 
 You can reach me at:
-- Email: [ary.wibowo@gos.co.id](mailto:ary.wibowo@gos.co.id)
+- Email: [Kirim email kesini](mailto:ztquality@gmail.com)
 - LinkedIn: [Ary Wibowo](https://www.linkedin.com/in/boworesearch/)
 
 Thank you for visiting my website!
