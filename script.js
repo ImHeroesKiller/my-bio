@@ -26,7 +26,7 @@ function parseCSV(data) {
 }
 
 function displayContent(data) {
-  // Menghapus header row
+  // Removing the header row
   data.shift();
 
   data.forEach(row => {
@@ -35,7 +35,7 @@ function displayContent(data) {
 
     if (element) {
       if (sectionId === "skills-content" || sectionId === "portfolio-content" || sectionId === "products-content") {
-        const items = row[2].split(',').map(item => item.trim());
+        const items = row[2].split('\n').map(item => item.trim());
         element.innerHTML = '';
         items.forEach(subItem => {
           const li = document.createElement("li");
@@ -43,7 +43,7 @@ function displayContent(data) {
           element.appendChild(li);
         });
       } else {
-        element.textContent = row[2];
+        element.innerHTML = row[2].replace(/\n/g, '<br>');
       }
     }
   });
