@@ -1,30 +1,36 @@
 document.addEventListener("DOMContentLoaded", function() {
-  fetch('/api/sheets-data') // Mengambil data dari endpoint server proxy
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
+  loadCSV(displayContent);
+});
+
+function loadCSV(callback) {
+  fetch('data.csv')
+    .then(response => response.text())
+    .then(data => {
+      const parsedData = parseCSV(data);
+      callback(parsedData);
     })
-    .then(data => displayContent(data))
     .catch(error => {
-      console.error('Error fetching data:', error);
-      // Tampilkan pesan kesalahan yang lebih informatif kepada pengguna (misalnya, menggunakan elemen HTML)
+      console.error('Error loading CSV:', error);
       const errorMessage = document.createElement('p');
       errorMessage.textContent = 'Terjadi kesalahan saat memuat data. Silakan coba lagi nanti.';
       document.body.appendChild(errorMessage);
     });
-});
+}
+
+function parseCSV(data) {
+  const lines = data.split('\n');
+  return lines.map(line => line.split(','));
+}
 
 function displayContent(data) {
   data.forEach(row => {
-    const sectionId = row[0].toLowerCase().replace(/\s+/g, '-') + "-content"; // Convert to lowercase and replace spaces with hyphens
+    const sectionId = row[0].toLowerCase().replace(/\s+/g, '-') + "-content";
     const element = document.getElementById(sectionId);
 
     if (element) {
       if (sectionId === "skills-content" || sectionId === "portfolio-content" || sectionId === "products-content") {
-        const items = row[2].split(',').map(item => item.trim()); // Split by comma and trim whitespace
-        element.innerHTML = ''; // Clear existing content
+        const items = row[2].split(',').map(item => item.trim());
+        element.innerHTML = '';
         items.forEach(subItem => {
           const li = document.createElement("li");
           li.textContent = subItem;
@@ -36,4 +42,3 @@ function displayContent(data) {
     }
   });
 }
-
