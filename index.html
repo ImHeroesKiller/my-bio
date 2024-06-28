@@ -13,7 +13,7 @@
             <h1>Ary Wibowo</h1>
             <p>Professional in Human Resources and Project Management</p>
             <nav>
-                <ul>
+                <ul class="nav-list">
                     <li><a href="#about">About Me</a></li>
                     <li><a href="#skills">Skills</a></li>
                     <li><a href="#experience">Experience</a></li>
@@ -21,6 +21,17 @@
                     <li><a href="#products">Products</a></li>
                     <li><a href="#contact">Contact</a></li>
                 </ul>
+                <div class="dropdown">
+                    <button class="dropbtn">Menu</button>
+                    <div class="dropdown-content">
+                        <a href="#about">About Me</a>
+                        <a href="#skills">Skills</a>
+                        <a href="#experience">Experience</a>
+                        <a href="#portfolio">Portfolio</a>
+                        <a href="#products">Products</a>
+                        <a href="#contact">Contact</a>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -47,7 +58,7 @@
         </section>
         <section id="contact" class="section">
             <h2>Contact</h2>
-            <div id="contact-content"></div>
+            <ul id="contact-content"></ul>
         </section>
     </main>
     <script src="script.js"></script>
