@@ -10,9 +10,10 @@ function initialize() {
             'path': 'https://sheets.googleapis.com/v4/spreadsheets/1EevPSckJw22gIwcENrg9stlrLzC-XNi4Br_lsOpk2I8/values/Sheet1!A2:C'
         });
     }).then(function(response) {
+        console.log(response); // Log response to console
         displayContent(response.result.values);
     }, function(reason) {
-        console.log('Error: ' + reason.result.error.message);
+        console.log('Error: ' + reason.result.error.message); // Log error to console
     });
 }
 
