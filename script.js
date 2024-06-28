@@ -1,27 +1,35 @@
 document.addEventListener("DOMContentLoaded", function() {
-    Papa.parse("data.csv", {
-        download: true,
-        header: true,
-        complete: function(results) {
-            displayContent(results.data);
-        }
-    });
+    gapi.load("client", initialize);
 });
 
+function initialize() {
+    gapi.client.init({
+        apiKey: '551964834401-ho2pceck8pkiqub015s8v7ap2as4pib5.apps.googleusercontent.com'  // Ganti dengan API Key Anda
+    }).then(function() {
+        return gapi.client.request({
+            'path': 'https://sheets.googleapis.com/v4/spreadsheets/YOUR_SPREADSHEET_ID/values/Sheet1!A2:C'
+        });
+    }).then(function(response) {
+        displayContent(response.result.values);
+    }, function(reason) {
+        console.log('Error: ' + reason.result.error.message);
+    });
+}
+
 function displayContent(data) {
-    data.forEach(item => {
-        let sectionId = item.section + "-content";
+    data.forEach(row => {
+        let sectionId = row[0] + "-content";
         let element = document.getElementById(sectionId);
         if (element) {
             if (sectionId === "skills-content" || sectionId === "portfolio-content" || sectionId === "products-content") {
-                let items = item.content.split(', ');
+                let items = row[2].split(', ');
                 items.forEach(subItem => {
                     let li = document.createElement("li");
                     li.textContent = subItem;
                     element.appendChild(li);
                 });
             } else {
-                element.textContent = item.content;
+                element.textContent = row[2];
             }
         }
     });
