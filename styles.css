@@ -7,10 +7,17 @@ body {
 }
 
 header {
-    text-align: center;
-    padding: 2rem 0;
     background-color: #333;
     color: #fff;
+    padding: 2rem 0;
+    text-align: center;
+}
+
+header .container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .profile-img {
@@ -18,31 +25,35 @@ header {
     height: 150px;
     border-radius: 50%;
     border: 3px solid #555;
+    margin-right: 2rem;
 }
 
-h1 {
-    font-size: 2.5rem;
-    color: #fff;
+.header-text h1 {
+    font-size: 2rem;
+    margin: 0;
 }
 
-p {
-    font-size: 1.1rem;
+.header-text p {
+    font-size: 1rem;
+    margin: 0.5rem 0 0;
 }
 
 nav {
     background-color: #555;
     padding: 0.5rem 0;
+    text-align: center;
 }
 
 nav ul {
     list-style: none;
     padding: 0;
-    text-align: center;
     margin: 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 nav ul li {
-    display: inline;
     margin: 0 1rem;
 }
 
@@ -62,8 +73,10 @@ section {
 }
 
 h2 {
-    font-size: 2rem;
+    font-size: 1.5rem;
     color: #333;
+    border-bottom: 2px solid #555;
+    padding-bottom: 0.5rem;
 }
 
 footer {
@@ -77,14 +90,19 @@ footer {
     .profile-img {
         width: 100px;
         height: 100px;
+        margin: 0;
+        margin-bottom: 1rem;
     }
 
-    h1 {
-        font-size: 2rem;
+    .header-text h1 {
+        font-size: 1.5rem;
+    }
+
+    nav ul {
+        flex-direction: column;
     }
 
     nav ul li {
-        display: block;
         margin: 0.5rem 0;
     }
 
