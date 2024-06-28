@@ -49,8 +49,8 @@ function displayContent(data) {
     const element = document.getElementById(sectionId);
 
     if (element) {
-      if (sectionId === "skills-content" || sectionId === "portfolio-content" || sectionId === "products-content") {
-        const items = row[2].split('\n').map(item => item.trim());
+      if (sectionId === "skills-content" || sectionId === "portfolio-content" || sectionId === "products-content" || sectionId === "contact-content") {
+        const items = row[2].split(',').map(item => item.trim());
         element.innerHTML = '';
         items.forEach(subItem => {
           const li = document.createElement("li");
