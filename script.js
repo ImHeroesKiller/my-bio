@@ -23,6 +23,9 @@ function parseCSV(data) {
 }
 
 function displayContent(data) {
+  // Removing the header row
+  data.shift();
+
   data.forEach(row => {
     const sectionId = row[0].toLowerCase().replace(/\s+/g, '-') + "-content";
     const element = document.getElementById(sectionId);
