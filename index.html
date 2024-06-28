@@ -8,12 +8,18 @@
     <meta name="keywords" content="Ary Wibowo, Human Resources, Project Management, Telecommunications, Professional Profile">
     <meta name="author" content="Ary Wibowo">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
     <header>
-        <img src="profile.jpg" alt="Profile Picture" class="profile-img">
-        <h1>Ary Wibowo</h1>
-        <p>Professional in Human Resources and Project Management</p>
+        <div class="container">
+            <img src="profile.jpg" alt="Profile Picture" class="profile-img">
+            <div class="header-text">
+                <h1>Ary Wibowo</h1>
+                <p>Professional in Human Resources and Project Management</p>
+            </div>
+        </div>
     </header>
 
     <nav>
@@ -30,44 +36,27 @@
     <main>
         <section id="about">
             <h2>About Me</h2>
-            <p>Hello, I am Ary Wibowo, a professional with extensive experience in Human Resources management, project management, and telecommunications. I am proficient in various software tools and have a passion for technology and business.</p>
+            <div id="about-content"></div>
         </section>
 
         <section id="skills">
             <h2>Skills</h2>
-            <ul>
-                <li>Human Resources Management</li>
-                <li>Project Management</li>
-                <li>Account Management</li>
-                <li>MS Excel, PowerPoint, Word, Visio</li>
-                <li>Proficient in English</li>
-            </ul>
+            <ul id="skills-content"></ul>
         </section>
 
         <section id="experience">
             <h2>Experience</h2>
-            <p>With a career spanning various roles in prestigious companies, I have developed a deep understanding of project coordination, quality control, and administrative processes. I have led numerous projects, enhancing productivity and ensuring client satisfaction.</p>
+            <div id="experience-content"></div>
         </section>
 
         <section id="portfolio">
             <h2>Portfolio</h2>
-            <p>Here are some of the key projects I have managed:</p>
-            <ul>
-                <li>Project A: Increased efficiency by 20% through process optimization.</li>
-                <li>Project B: Led a team of 50 members to successfully launch a new product.</li>
-                <li>Project C: Implemented a new HR system that improved employee satisfaction by 30%.</li>
-                <li>Project D: Managed a multi-million dollar project, delivering on time and within budget.</li>
-            </ul>
+            <ul id="portfolio-content"></ul>
         </section>
 
         <section id="products">
             <h2>Products</h2>
-            <p>Currently developing the following products:</p>
-            <ul>
-                <li>Product 1: An innovative HR management tool designed to streamline recruitment processes.</li>
-                <li>Product 2: A project management application that integrates with existing tools for seamless workflow.</li>
-                <li>Product 3: A business analytics platform that provides real-time insights and reporting.</li>
-            </ul>
+            <ul id="products-content"></ul>
         </section>
 
         <section id="contact">
