@@ -1,80 +1,73 @@
-a {
-    color: #333;
-    text-decoration: none;
-    transition: color 0.3s ease-in-out;
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    line-height: 1.6;
+    background-color: #f4f4f4; /* Light background color */
 }
 
-a:hover {
-    color: #555;
-}
-
-.section ul li:hover {
-    background: #ccc;
-    transform: scale(1.05);
-}
-
-.section p {
-    transition: color 0.3s ease-in-out;
-}
-
-.section p:hover {
-    color: #555;
-}
-
-.btn {
-    display: inline-block;
-    padding: 10px 20px;
-    font-size: 16px;
+header {
+    background: #333; /* Dark background color for header */
     color: #fff;
-    background-color: #333;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.3s ease;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+header h1 {
+    margin-bottom: 0.5rem;
+}
+
+/* Navigation Styles */
+nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: #444; /* Slightly darker background for navigation */
+    text-align: center;
+}
+
+nav li {
+    display: inline;
+    margin: 0 1rem;
+}
+
+nav a {
+    color: #fff;
     text-decoration: none;
+    padding: 0.5rem 1rem;
 }
 
-.btn:hover {
-    background-color: #555;
-    transform: scale(1.05);
+/* Main Content Styles */
+main {
+    padding: 2rem;
+    max-width: 800px; /* Limit width for better readability */
+    margin: 0 auto;
 }
 
-.btn:active {
-    background-color: #111;
-    transform: scale(1);
+section {
+    margin-bottom: 2rem;
 }
 
-@media (max-width: 768px) {
-    header .container {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    header img.profile-pic {
-        margin-bottom: 10px;
-    }
-
-    .nav-list {
-        display: none;
-    }
-
-    .dropdown {
-        display: block;
-    }
+section h2 {
+    color: #333;
 }
 
-/* Fade-in animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+/* Profile Image */
+.profile-img {
+    width: 150px; /* Adjust size as needed */
+    height: 150px;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    object-fit: cover; /* Ensure image covers container while maintaining aspect ratio */
 }
 
-/* Section animation */
-.section.fade-in {
-    opacity: 1;
-    transform: translateY(0);
+/* Footer Styles */
+footer {
+    background: #333;
+    color: #fff;
+    text-align: center;
+    padding: 1rem 0;
+    position: fixed; /* Make footer stick to the bottom */
+    bottom: 0;
+    width: 100%;
 }
