@@ -3,28 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stable Realtime Dashboard</title>
+    <title>Professional Crypto Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 1rem;
-            padding: 0 20px;
+            margin: 0;
+            padding: 2rem;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
         }
-        
-        .container {
-            max-width: 800px;
+
+        .dashboard {
+            max-width: 1200px;
             margin: 0 auto;
         }
 
+        .header {
+            margin-bottom: 1.5rem;
+        }
+
         .chart-container {
+            background: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             position: relative;
-            height: 400px;
+        }
+
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+            padding: 20px;
+            background: #2d2d2d;
+            border-radius: 10px;
+        }
+
+        .stat-box {
+            padding: 15px;
+            background: #3a3a3a;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-box h3 {
+            margin: 0 0 8px;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .stat-box p {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .stat-box.negative p {
+            color: #ff4444;
+        }
+
+        .stat-box.positive p {
+            color: #44cc44;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            transform: translate(-50%, -120%);
         }
 
         svg {
             width: 100%;
-            height: 100%;
+            height: 400px;
         }
 
         .line {
@@ -33,48 +92,68 @@
             stroke-width: 2px;
         }
 
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            opacity: 0;
-            transition: opacity 0.2s;
-            pointer-events: none;
+        .axis path,
+        .axis line {
+            stroke: #555;
         }
 
-        @media (max-width: 600px) {
-            body {
-                font-size: 14px;
-            }
-            
-            .chart-container {
+        .axis text {
+            fill: #999;
+        }
+
+        .dot {
+            fill: #4CAF50;
+            stroke: #fff;
+            stroke-width: 2px;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            svg {
                 height: 300px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Realtime Bitcoin Price</h1>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Bitcoin Realtime Dashboard</h1>
+            <p>Live price tracking with technical analysis</p>
+        </div>
+        
         <div class="chart-container">
             <div class="tooltip"></div>
             <svg viewBox="0 0 800 400"></svg>
         </div>
+
+        <div class="stats-panel">
+            <div class="stat-box" id="currentPrice">
+                <h3>CURRENT PRICE</h3>
+                <p>$0.00</p>
+            </div>
+            <div class="stat-box" id="priceChange">
+                <h3>24H CHANGE</h3>
+                <p>+0.00%</p>
+            </div>
+            <div class="stat-box" id="highPrice">
+                <h3>24H HIGH</h3>
+                <p>$0.00</p>
+            </div>
+            <div class="stat-box" id="lowPrice">
+                <h3>24H LOW</h3>
+                <p>$0.00</p>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Konfigurasi
-        const MAX_DATA_AGE = 30000; // 30 detik window
-        const UPDATE_INTERVAL = 1000; // 1 detik
+        const MAX_DATA_POINTS = 60;
+        const UPDATE_INTERVAL = 1000;
         let data = [];
-        let lastUpdate = Date.now();
+        let initialPrice = null;
 
-        // Setup WebSocket
-        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
-
-        // Inisialisasi D3
+        // D3 Setup
         const margin = { top: 20, right: 30, bottom: 40, left: 50 };
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
@@ -85,14 +164,11 @@
         const line = d3.line()
             .x(d => x(d.time))
             .y(d => y(d.price))
-            .curve(d3.curveMonotoneX);
+            .curve(d3.curveBasis);
 
         const svg = d3.select("svg")
             .attr("preserveAspectRatio", "xMidYMid meet")
             .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
-
-        const xAxis = d3.axisBottom(x).ticks(5);
-        const yAxis = d3.axisLeft(y).ticks(5);
 
         svg.append("g")
             .attr("class", "x-axis")
@@ -102,82 +178,118 @@
             .attr("class", "y-axis")
             .attr("transform", `translate(${margin.left},0)`);
 
-        // Fungsi update
-        function update() {
-            // Filter data lama
-            const now = Date.now();
-            data = data.filter(d => now - d.time <= MAX_DATA_AGE);
+        // WebSocket
+        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
 
-            // Update domain
+        // Update functions
+        function updateChart() {
+            // Keep only last 60 data points
+            data = data.slice(-MAX_DATA_POINTS);
+
+            // Update scales
             x.domain(d3.extent(data, d => d.time));
             y.domain([d3.min(data, d => d.price), d3.max(data, d => d.price)]);
 
-            // Update garis
+            // Update line
             svg.select(".line")
                 .datum(data)
                 .attr("d", line);
 
-            // Update sumbu
+            // Update dots
+            const dots = svg.selectAll(".dot")
+                .data(data);
+
+            dots.enter()
+                .append("circle")
+                .attr("class", "dot")
+                .merge(dots)
+                .attr("cx", d => x(d.time))
+                .attr("cy", d => y(d.price))
+                .attr("r", 4)
+                .on("mouseover", (event, d) => showTooltip(event, d))
+                .on("mouseout", hideTooltip);
+
+            dots.exit().remove();
+
+            // Update axes
             svg.select(".x-axis")
-                .call(xAxis)
-                .selectAll("text")
-                .style("text-anchor", "end")
-                .attr("dx", "-.8em")
-                .attr("dy", ".15em")
-                .attr("transform", "rotate(-45)");
+                .call(d3.axisBottom(x).ticks(5)
+                    .tickFormat(d3.timeFormat("%H:%M:%S")));
 
             svg.select(".y-axis")
-                .call(yAxis);
+                .call(d3.axisLeft(y).ticks(5)
+                    .tickFormat(d => `$${d.toFixed(0)}`));
         }
 
-        // Handler WebSocket
-        ws.onmessage = function(event) {
+        function updateStats() {
+            if (!data.length) return;
+
+            const currentPrice = data[data.length - 1].price;
+            const highPrice = d3.max(data, d => d.price);
+            const lowPrice = d3.min(data, d => d.price);
+            
+            // Update current price
+            d3.select("#currentPrice p")
+                .text(`$${currentPrice.toFixed(2)}`);
+                
+            // Update 24h change
+            if (initialPrice) {
+                const change = ((currentPrice - initialPrice) / initialPrice) * 100;
+                const changeBox = d3.select("#priceChange");
+                changeBox.select("p")
+                    .text(`${change.toFixed(2)}%`)
+                    .classed("positive", change > 0)
+                    .classed("negative", change < 0);
+            }
+
+            // Update high/low
+            d3.select("#highPrice p").text(`$${highPrice.toFixed(2)}`);
+            d3.select("#lowPrice p").text(`$${lowPrice.toFixed(2)}`);
+        }
+
+        function showTooltip(event, d) {
+            d3.select(".tooltip")
+                .style("opacity", 1)
+                .html(`
+                    <div>Price: $${d.price.toFixed(2)}</div>
+                    <div>Time: ${d.time.toLocaleTimeString()}</div>
+                `)
+                .style("left", `${event.pageX}px`)
+                .style("top", `${event.pageY}px`);
+        }
+
+        function hideTooltip() {
+            d3.select(".tooltip").style("opacity", 0);
+        }
+
+        // WebSocket handlers
+        ws.onopen = () => console.log("Connected to Binance");
+        
+        ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data);
                 const price = parseFloat(msg.p);
                 const time = new Date(msg.T);
 
-                // Throttle update untuk kinerja
-                if (Date.now() - lastUpdate > UPDATE_INTERVAL) {
-                    data.push({ time, price });
-                    update();
-                    lastUpdate = Date.now();
+                data.push({ time, price });
+                if (!initialPrice) initialPrice = price;
+
+                // Throttle updates
+                if (Date.now() % UPDATE_INTERVAL < 16) {
+                    updateChart();
+                    updateStats();
                 }
             } catch (e) {
-                console.error("Error parsing data:", e);
+                console.error("Error:", e);
             }
         };
 
-        // Tooltip interaksi
-        svg.on('touchmove mousemove', function(event) {
-            const mouseX = d3.pointer(event)[0];
-            const bisect = d3.bisector(d => d.time).left;
-            const x0 = x.invert(mouseX);
-            const index = bisect(data, x0, 1);
-            const d0 = data[index - 1];
-            const d1 = data[index];
-            
-            if (!d0 || !d1) return;
-
-            const d = x0 - d0.time > d1.time - x0 ? d1 : d0;
-            
-            d3.select(".tooltip")
-                .style("opacity", 1)
-                .html(`Harga: $${d.price.toFixed(2)}<br>Waktu: ${d.time.toLocaleTimeString()}`)
-                .style("transform", `translate(${mouseX + 10}px, ${y(d.price) + margin.top - 20}px)`);
-        })
-        .on('mouseleave', () => {
-            d3.select(".tooltip").style("opacity", 0);
-        });
-
-        // Inisialisasi garis
-        svg.append("path").attr("class", "line");
-        
-        // Handler error
-        ws.onerror = error => {
+        ws.onerror = (error) => {
             console.error("WebSocket Error:", error);
-            setTimeout(() => ws.close(), 5000);
         };
+
+        // Initial setup
+        svg.append("path").attr("class", "line");
     </script>
 </body>
 </html>
