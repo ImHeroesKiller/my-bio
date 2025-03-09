@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fixed Crypto Analytics Dashboard</title>
+    <title>Simplified Crypto Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -12,12 +12,15 @@
             background-color: #121212;
             color: #e0e0e0;
             font-family: 'Segoe UI', sans-serif;
-            line-height: 1.6;
         }
 
         .dashboard {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 1.5rem;
         }
 
         .connection-status {
@@ -61,50 +64,50 @@
             color: white;
         }
 
-        .analysis-container {
+        .chart-container {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            position: relative;
+            margin-top: 25px;
+        }
+
+        .stats-panel {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 25px;
             margin-top: 25px;
         }
 
-        .chart-panel {
-            background: #1e1e1e;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        .stat-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.2s;
         }
 
-        .indicator-panel {
-            background: #1e1e1e;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        .stat-card:hover {
+            transform: translateY(-2px);
         }
 
-        .indicator-section {
-            margin-bottom: 20px;
-        }
-
-        .indicator-title {
-            color: #888;
+        .stat-title {
+            color: #777;
             font-size: 14px;
             margin-bottom: 8px;
-            padding-bottom: 4px;
-            border-bottom: 1px solid #333;
         }
 
-        .indicator-value {
+        .stat-value {
             color: #fff;
-            font-size: 20px;
+            font-size: 28px;
             font-weight: 600;
             margin: 0;
         }
 
-        .indicator-subvalue {
-            color: #aaa;
-            font-size: 14px;
-            margin-top: 4px;
+        .percent-change {
+            font-size: 18px;
+            font-weight: 500;
+            margin-left: 8px;
         }
 
         .tooltip {
@@ -128,10 +131,8 @@
             fill: none;
             stroke: #4CAF50;
             stroke-width: 2.5px;
-        }
-
-        .volume-bar {
-            fill: #777;
+            stroke-linejoin: round;
+            stroke-linecap: round;
         }
 
         .axis path,
@@ -144,9 +145,13 @@
             font-size: 12px;
         }
 
-        @media (max-width: 1024px) {
-            .analysis-container {
-                grid-template-columns: 1fr;
+        @media (max-width: 768px) {
+            svg {
+                height: 300px;
+            }
+            
+            .stat-card {
+                padding: 15px;
             }
         }
     </style>
@@ -154,8 +159,8 @@
 <body>
     <div class="dashboard">
         <div class="header">
-            <h1>Bitcoin Analytics Dashboard</h1>
-            <p>Advanced technical analysis and market insights</p>
+            <h1>Bitcoin Price Dashboard</h1>
+            <p>Realtime market data tracking</p>
         </div>
         
         <div class="connection-status">
@@ -163,93 +168,79 @@
         </div>
 
         <div class="timeframe-selector">
-            <button onclick="setTimeframe('1m')">1m</button>
-            <button onclick="setTimeframe('5m')" class="active">5m</button>
-            <button onclick="setTimeframe('15m')">15m</button>
-            <button onclick="setTimeframe('1h')">1h</button>
+            <button onclick="setTimeframe(15)">15s</button>
+            <button onclick="setTimeframe(60)" class="active">1m</button>
+            <button onclick="setTimeframe(300)">5m</button>
+            <button onclick="setTimeframe(3600)">1h</button>
         </div>
 
-        <div class="analysis-container">
-            <div class="chart-panel">
-                <div class="tooltip"></div>
-                <svg viewBox="0 0 800 400"></svg>
-                <svg class="volume-chart" viewBox="0 0 800 100"></svg>
+        <div class="chart-container">
+            <div class="tooltip"></div>
+            <svg viewBox="0 0 800 400"></svg>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-title">CURRENT PRICE</div>
+                <div class="stat-value" id="currentPrice">$0.00</div>
             </div>
-
-            <div class="indicator-panel">
-                <div class="indicator-section">
-                    <div class="indicator-title">PRICE METRICS</div>
-                    <div class="indicator-value" id="currentPrice">$0.00</div>
-                    <div class="indicator-subvalue">
-                        <span id="priceChange">0.00%</span>
-                    </div>
+            <div class="stat-card">
+                <div class="stat-title">24H CHANGE</div>
+                <div class="stat-value">
+                    <span id="priceChange">0.00%</span>
                 </div>
-
-                <div class="indicator-section">
-                    <div class="indicator-title">VOLUME (24h)</div>
-                    <div class="indicator-value" id="dailyVolume">0.00 BTC</div>
-                    <div class="indicator-subvalue" id="volumeUSD">$0.00</div>
-                </div>
-
-                <div class="indicator-section">
-                    <div class="indicator-title">TECHNICAL INDICATORS</div>
-                    <div class="indicator-value">
-                        SMA 50: <span id="sma50">0.00</span>
-                    </div>
-                    <div class="indicator-value">
-                        SMA 200: <span id="sma200">0.00</span>
-                    </div>
-                    <div class="indicator-value">
-                        RSI: <span id="rsi">0.00</span>
-                    </div>
-                </div>
-
-                <div class="indicator-section">
-                    <div class="indicator-title">MARKET SENTIMENT</div>
-                    <div class="indicator-value">
-                        Buy/Sell Ratio: <span id="sentiment">0.00</span>
-                    </div>
-                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">24H HIGH</div>
+                <div class="stat-value" id="highPrice">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">24H LOW</div>
+                <div class="stat-value" id="lowPrice">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">24H VOLUME</div>
+                <div class="stat-value" id="dailyVolume">0.00 BTC</div>
+                <div class="stat-subvalue" id="volumeUSD">$0.00</div>
             </div>
         </div>
     </div>
 
     <script>
-        const baseWsUrl = 'wss://stream.binance.com:9443/ws/';
-        let ws;
-        let reconnectInterval;
-        let activeTimeframe = '5m';
-        let candleData = [];
-        let volumeData = [];
-        let buyVolume = 0;
-        let sellVolume = 0;
+        const MAX_DATA_AGE = 60000; // 1 menit
+        const UPDATE_INTERVAL = 1000; // 1 detik
+        let data = [];
         let initialPrice = null;
-        let lastRender = 0;
+        let lastRender = Date.now();
+        let totalVolume = 0;
 
         // D3 Setup
         const margin = { top: 20, right: 30, bottom: 40, left: 50 };
         const width = 800 - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
-        const volumeHeight = 100;
 
-        // Price chart
         const x = d3.scaleTime().range([margin.left, width]);
         const y = d3.scaleLinear().range([height, margin.top]);
-        const yVolume = d3.scaleLinear().range([volumeHeight, 0]);
 
-        const priceLine = d3.line()
+        const line = d3.line()
             .x(d => x(d.time))
-            .y(d => y(d.close))
+            .y(d => y(d.price))
             .curve(d3.curveMonotoneX);
 
-        const svg = d3.select(".chart-panel svg")
+        const svg = d3.select("svg")
             .attr("preserveAspectRatio", "xMidYMid meet")
             .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
 
-        // Volume chart
-        const volumeSvg = d3.select(".volume-chart")
-            .attr("preserveAspectRatio", "xMidYMid meet")
-            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${volumeHeight + margin.top}`);
+        svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0,${height})`);
+
+        svg.append("g")
+            .attr("class", "y-axis")
+            .attr("transform", `translate(${margin.left},0)`);
+
+        // WebSocket
+        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
 
         // Format angka
         const formatNumber = (num) => 
@@ -258,263 +249,154 @@
                 maximumFractionDigits: 2
             }).format(num);
 
-        // Inisialisasi chart
-        function initChart() {
-            // Price chart
-            svg.append("g")
-                .attr("class", "x-axis")
-                .attr("transform", `translate(0,${height})`);
-
-            svg.append("g")
-                .attr("class", "y-axis")
-                .attr("transform", `translate(${margin.left},0)`);
-
-            // Volume chart
-            volumeSvg.append("g")
-                .attr("class", "volume-axis")
-                .attr("transform", `translate(0,${volumeHeight})`);
-        }
-
         // Update functions
         function updateChart() {
-            if (!candleData.length) return;
+            const now = Date.now();
+            data = data.filter(d => now - d.time <= MAX_DATA_AGE);
 
-            // Update scales
-            x.domain(d3.extent(candleData, d => d.time));
-            y.domain([d3.min(candleData, d => d.low), d3.max(candleData, d => d.high)]);
-            yVolume.domain([0, d3.max(volumeData, d => d.volume)]);
+            x.domain(d3.extent(data, d => d.time));
+            y.domain([d3.min(data, d => d.price), d3.max(data, d => d.price)]);
 
-            // Price line
             const t = svg.transition().duration(500);
-            svg.select(".price-line")
-                .datum(candleData)
+
+            svg.select(".line")
+                .datum(data)
                 .transition(t)
-                .attr("d", priceLine);
+                .attr("d", line);
 
-            // Volume bars
-            volumeSvg.selectAll(".volume-bar")
-                .data(volumeData)
-                .join(
-                    enter => enter.append("rect")
-                        .attr("class", "volume-bar")
-                        .attr("x", d => x(d.time) - 3)
-                        .attr("width", 6)
-                        .attr("y", d => yVolume(d.volume))
-                        .attr("height", d => volumeHeight - yVolume(d.volume)),
-                    update => update
-                        .attr("x", d => x(d.time) - 3)
-                        .attr("y", d => yVolume(d.volume))
-                        .attr("height", d => volumeHeight - yVolume(d.volume)),
-                    exit => exit.remove()
-                );
-
-            // Update axes
             svg.select(".x-axis")
                 .transition(t)
                 .call(d3.axisBottom(x)
                     .ticks(5)
-                    .tickFormat(d3.timeFormat("%H:%M")));
+                    .tickFormat(d3.timeFormat("%H:%M:%S")));
 
             svg.select(".y-axis")
                 .transition(t)
                 .call(d3.axisLeft(y)
                     .ticks(5)
                     .tickFormat(d => `$${formatNumber(d)}`));
-
-            volumeSvg.select(".volume-axis")
-                .transition(t)
-                .call(d3.axisBottom(x)
-                    .ticks(5)
-                    .tickFormat(d3.timeFormat("%H:%M")));
         }
 
-        function updateIndicators() {
-            if (!candleData.length) return;
+        function updateStats() {
+            if (!data.length) return;
 
-            const last = candleData[candleData.length - 1];
-            const currentPrice = last.close;
-            const high = d3.max(candleData, d => d.high);
-            const low = d3.min(candleData, d => d.low);
+            const current = data[data.length - 1].price;
+            const high = d3.max(data, d => d.price);
+            const low = d3.min(data, d => d.price);
+
+            d3.select("#currentPrice")
+                .text(`$${formatNumber(current)}`);
+                
+            if (initialPrice) {
+                const change = ((current - initialPrice) / initialPrice) * 100;
+                const color = change >= 0 ? "#44cc44" : "#ff4444";
+                d3.select("#priceChange")
+                    .html(`
+                        ${change.toFixed(2)}%
+                        <span class="percent-change" style="color:${color}">
+                            ${change >= 0 ? '▲' : '▼'}
+                        </span>
+                    `);
+            }
+
+            d3.select("#highPrice").text(`$${formatNumber(high)}`);
+            d3.select("#lowPrice").text(`$${formatNumber(low)}`);
             
-            // Price metrics
-            d3.select("#currentPrice").text(`$${formatNumber(currentPrice)}`);
-            d3.select("#priceChange").text(`
-                ${((currentPrice - initialPrice)/initialPrice*100).toFixed(2)}% 
-                ${currentPrice > initialPrice ? '▲' : '▼'}
-            `).style('color', currentPrice > initialPrice ? '#44cc44' : '#ff4444');
-
-            // Volume
-            const totalBTC = volumeData.reduce((a, b) => a + b.volume, 0).toFixed(2);
-            const totalUSD = (totalBTC * currentPrice).toLocaleString('en-US', {
+            // Update volume
+            const totalBTC = totalVolume.toFixed(2);
+            const totalUSD = (totalBTC * current).toLocaleString('en-US', {
                 style: 'currency',
                 currency: 'USD'
             });
             
             d3.select("#dailyVolume").text(`${totalBTC} BTC`);
             d3.select("#volumeUSD").text(totalUSD);
-
-            // SMA
-            const sma50 = d3.mean(candleData.slice(-50), d => d.close);
-            const sma200 = d3.mean(candleData.slice(-200), d => d.close);
-            
-            d3.select("#sma50").text(formatNumber(sma50));
-            d3.select("#sma200").text(formatNumber(sma200));
-
-            // RSI
-            const gains = [];
-            const losses = [];
-            for (let i = 1; i < candleData.length; i++) {
-                const change = candleData[i].close - candleData[i-1].close;
-                change > 0 ? gains.push(change) : losses.push(-change);
-            }
-            const avgGain = d3.mean(gains.slice(-14));
-            const avgLoss = d3.mean(losses.slice(-14));
-            const rs = avgGain / avgLoss;
-            const rsi = 100 - (100 / (1 + rs));
-            d3.select("#rsi").text(rsi.toFixed(2));
-
-            // Market sentiment
-            const total = buyVolume + sellVolume;
-            const ratio = total ? (buyVolume / total).toFixed(2) : 0;
-            d3.select("#sentiment").text(`${ratio}`);
         }
 
-        // Koneksi WebSocket
-        function connectWebSocket(tf = activeTimeframe) {
-            if (ws) ws.close();
-            
-            activeTimeframe = tf;
-            const streamName = `btcusdt@kline_${tf}`;
-            ws = new WebSocket(`${baseWsUrl}${streamName}`);
-            
-            ws.onopen = () => {
-                console.log(`Connected to ${streamName}`);
-                document.getElementById('statusIndicator')
-                    .classList.add('online')
-                    .textContent = `Connected (${tf})`;
-                clearInterval(reconnectInterval);
-            };
+        // WebSocket handlers
+        ws.onopen = () => {
+            document.getElementById('statusIndicator')
+                .classList.add('online')
+                .textContent = 'Connected';
+        };
 
-            ws.onerror = (error) => {
-                console.error("WebSocket Error:", error);
-                document.getElementById('statusIndicator')
-                    .classList.add('offline')
-                    .textContent = 'Reconnecting...';
-            };
+        ws.onerror = (error) => {
+            document.getElementById('statusIndicator')
+                .classList.add('offline')
+                .textContent = 'Reconnecting...';
+            console.error("WebSocket Error:", error);
+        };
 
-            ws.onclose = () => {
-                console.log("WebSocket disconnected. Reconnecting...");
-                document.getElementById('statusIndicator')
-                    .classList.add('offline')
-                    .textContent = 'Reconnecting...';
-                reconnectInterval = setInterval(() => connectWebSocket(activeTimeframe), 5000);
-            };
+        ws.onclose = () => {
+            document.getElementById('statusIndicator')
+                .classList.add('offline')
+                .textContent = 'Disconnected';
+        };
 
-            ws.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    const candle = msg.k;
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                const price = parseFloat(msg.p);
+                const time = new Date(msg.T);
 
-                    const newCandle = {
-                        time: new Date(candle.t),
-                        open: +candle.o,
-                        high: +candle.h,
-                        low: +candle.l,
-                        close: +candle.c,
-                        volume: +candle.v,
-                        isClosed: candle.x
-                    };
+                data.push({ time, price });
+                totalVolume += parseFloat(msg.q); // Quantity in BTC
 
-                    // Update data
-                    if (candleData.length === 0 || newCandle.time > candleData[candleData.length-1].time) {
-                        candleData.push(newCandle);
-                        volumeData.push(newCandle);
-                    } else {
-                        candleData[candleData.length-1] = newCandle;
-                        volumeData[volumeData.length-1] = newCandle;
-                    }
-
-                    // Update buy/sell volume
-                    if (newCandle.close > newCandle.open) {
-                        buyVolume += newCandle.volume;
-                    } else {
-                        sellVolume += newCandle.volume;
-                    }
-
-                    // Set initial price
-                    if (!initialPrice) initialPrice = newCandle.open;
-
-                    // Keep max 200 candles
-                    if (candleData.length > 200) {
-                        candleData.shift();
-                        volumeData.shift();
-                    }
-
-                    // Throttle updates
-                    if (Date.now() - lastRender > 500 || newCandle.isClosed) {
-                        updateChart();
-                        updateIndicators();
-                        lastRender = Date.now();
-                    }
-                } catch (e) {
-                    console.error("Error processing message:", e);
+                if (!initialPrice) {
+                    initialPrice = price;
+                    updateStats();
                 }
-            };
-        }
+
+                if (Date.now() - lastRender > UPDATE_INTERVAL) {
+                    updateChart();
+                    updateStats();
+                    lastRender = Date.now();
+                }
+            } catch (e) {
+                console.error("Error:", e);
+            }
+        };
 
         // Timeframe control
-        function setTimeframe(tf) {
-            activeTimeframe = tf;
+        function setTimeframe(seconds) {
+            MAX_DATA_AGE = seconds * 1000;
             document.querySelectorAll('.timeframe-selector button')
                 .forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-            
-            // Reset data
-            candleData = [];
-            volumeData = [];
-            buyVolume = 0;
-            sellVolume = 0;
-            initialPrice = null;
-            
-            connectWebSocket(tf);
+            updateChart();
         }
 
-        // Tooltip
+        // Tooltip interaksi
         svg.on('touchmove mousemove', function(event) {
             const mouseX = d3.pointer(event)[0];
             const x0 = x.invert(mouseX);
             const bisect = d3.bisector(d => d.time).left;
-            const index = bisect(candleData, x0, 1);
-            const d = candleData[index];
+            const index = bisect(data, x0, 1);
+            const d0 = data[index - 1];
+            const d1 = data[index];
+            
+            if (!d0 || !d1) return;
 
-            if (!d) return;
-
+            const d = x0 - d0.time > d1.time - x0 ? d1 : d0;
+            
             d3.select(".tooltip")
                 .style("opacity", 1)
                 .html(`
-                    <div class="tooltip-title">Candle Details</div>
-                    <div>Open: $${formatNumber(d.open)}</div>
-                    <div>High: $${formatNumber(d.high)}</div>
-                    <div>Low: $${formatNumber(d.low)}</div>
-                    <div>Close: $${formatNumber(d.close)}</div>
-                    <div>Volume: ${d.volume.toFixed(2)} BTC</div>
+                    <div class="tooltip-title">Price Details</div>
+                    <div>Price: $${formatNumber(d.price)}</div>
                     <div>Time: ${d.time.toLocaleTimeString()}</div>
                 `)
                 .style("left", `${event.pageX}px`)
-                .style("top", `${event.pageY - 120}px`);
+                .style("top", `${event.pageY - 60}px`);
         })
         .on('mouseleave', () => {
             d3.select(".tooltip").style("opacity", 0);
         });
 
         // Initial setup
-        document.addEventListener('DOMContentLoaded', () => {
-            initChart();
-            svg.append("path")
-                .attr("class", "price-line")
-                .style("stroke", "#4CAF50");
-            connectWebSocket();
-        });
+        svg.append("path")
+            .attr("class", "line")
+            .style("stroke", "#4CAF50");
     </script>
 </body>
 </html>
