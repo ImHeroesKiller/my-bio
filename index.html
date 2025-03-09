@@ -3,138 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Immersive 3D Web Experience</title>
+    <title>Bitcoin 3D Price Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r146/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/renderers/CSS3DRenderer.js"></script>
     <style>
-        body {
-            margin: 0;
-            background-color: #1a1a1a;
+        body { 
+            margin: 0; 
+            overflow: hidden;
+            background: #0a0a0a;
             color: #e0e0e0;
             font-family: 'Segoe UI', sans-serif;
         }
 
-        #info {
+        #ui-container {
             position: absolute;
             top: 20px;
             left: 20px;
             right: 20px;
-            padding: 15px;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .info-panel {
             background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
             border-radius: 8px;
             backdrop-filter: blur(5px);
-            text-align: center;
+            margin: 5px;
         }
 
-        #tooltip {
+        .tooltip {
             position: absolute;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.9);
             color: #fff;
-            display: none;
-        }
-
-        canvas {
-            display: block;
+            padding: 10px;
+            border-radius: 4px;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            opacity: 0;
         }
 
         @media (max-width: 768px) {
-            #info {
-                padding: 10px;
-                font-size: 14px;
+            #ui-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .info-panel {
+                margin: 10px 0;
+                width: 90%;
             }
         }
     </style>
 </head>
 <body>
-    <div id="info">
-        <h2>3D Realtime Bitcoin Visualization</h2>
-        <p>Drag untuk memutar | Scroll untuk zoom | Klik untuk info</p>
-        <div id="tooltip"></div>
+    <div id="ui-container">
+        <div class="info-panel">
+            <h2> Bitcoin 3D Price Visualization </h2>
+            <div id="statusIndicator" class="offline">Connecting...</div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="stat-value" id="currentPrice3D">$0.00</div>
+            <div class="percent-change" id="priceChange3D">0.00%</div>
+        </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <div class="tooltip" id="3dTooltip"></div>
+
     <script>
-        // Setup dasar Three.js
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(
-            75,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            1000
-        );
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x1a1a1a);
-        document.body.appendChild(renderer.domElement);
+        // Konfigurasi
+        const SYMBOL = 'btcusdt';
+        const MAX_POINTS = 100;
+        const SCALE_FACTOR = 0.0002;
+        
+        // Setup Three.js
+        let scene, camera, renderer, controls, cssRenderer;
+        let priceSphere, priceLine, priceData = [];
+        let lastPrice = null;
 
-        // Kontrol kamera
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        camera.position.z = 5;
+        // Inisialisasi
+        function init() {
+            // Scene 3D
+            scene = new THREE.Scene();
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.z = 15;
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x0a0a0a);
+            document.body.appendChild(renderer.domElement);
+            
+            // CSS3D Renderer untuk tooltip
+            cssRenderer = new THREE.CSS3DRenderer();
+            cssRenderer.setSize(window.innerWidth, window.innerHeight);
+            cssRenderer.domElement.style.position = 'absolute';
+            cssRenderer.domElement.style.top = 0;
+            document.body.appendChild(cssRenderer.domElement);
 
-        // Membuat objek 3D
-        const geometry = new THREE.BoxGeometry();
-        const texture = new THREE.TextureLoader().load(
-            'https://threejs.org/examples/textures/crate.gif',
-            () => {
-                const material = new THREE.MeshPhongMaterial({ map: texture });
-                const cube = new THREE.Mesh(geometry, material);
-                scene.add(cube);
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true;
 
-                // Animasi
-                function animate() {
-                    requestAnimationFrame(animate);
-                    cube.rotation.x += 0.01;
-                    cube.rotation.y += 0.01;
-                    controls.update();
-                    renderer.render(scene, camera);
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            // Sphere Bitcoin
+            const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+            const sphereMaterial = new THREE.MeshPhongMaterial({
+                color: 0x4CAF50,
+                transparent: true,
+                opacity: 0.8
+            });
+            priceSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            scene.add(priceSphere);
+
+            // Garis harga 3D
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
+            const lineGeometry = new THREE.BufferGeometry();
+            lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+            priceLine = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(priceLine);
+
+            // WebSocket
+            connectWebSocket();
+        }
+
+        // Koneksi WebSocket
+        function connectWebSocket() {
+            const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${SYMBOL}@trade`);
+            
+            ws.onopen = () => {
+                document.getElementById('statusIndicator')
+                    .classList.add('online')
+                    .textContent = 'Connected to Binance';
+            };
+
+            ws.onerror = (error) => {
+                document.getElementById('statusIndicator')
+                    .classList.add('offline')
+                    .textContent = 'Reconnecting...';
+                console.error("WebSocket Error:", error);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    const price = parseFloat(data.p);
+                    
+                    if (lastPrice === null) lastPrice = price;
+                    
+                    // Update data
+                    priceData.push({
+                        price: price,
+                        time: new Date(data.T),
+                        delta: price - lastPrice
+                    });
+                    
+                    // Batasi jumlah data
+                    if (priceData.length > MAX_POINTS) priceData.shift();
+
+                    // Update UI
+                    update3DVisualization();
+                    updateStats(price);
+                } catch (e) {
+                    console.error("Error:", e);
                 }
-                animate();
-            }
-        );
+            };
+        }
 
-        // Pencahayaan
-        const light = new THREE.PointLight(0xffffff, 1, 100);
-        light.position.set(10, 10, 10);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040));
+        // Update visualisasi
+        function update3DVisualization() {
+            // Update ukuran bola berdasarkan harga
+            const scale = priceData[priceData.length-1].price * SCALE_FACTOR;
+            priceSphere.scale.set(scale, scale, scale);
 
-        // Tooltip interaksi
-        const tooltip = document.getElementById('tooltip');
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
+            // Update warna berdasarkan pergerakan
+            const color = new THREE.Color(
+                priceData[priceData.length-1].delta > 0 ? 0x44cc44 : 0xff4444
+            );
+            priceSphere.material.color = color;
 
-        window.addEventListener('mousemove', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            // Update garis 3D
+            const positions = [];
+            priceData.forEach((d, i) => {
+                const angle = (i / MAX_POINTS) * Math.PI * 2;
+                const radius = 5 + (d.price * 0.0001);
+                positions.push(
+                    Math.cos(angle) * radius,
+                    (d.price * 0.003) - 10,
+                    Math.sin(angle) * radius
+                );
+            });
 
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(scene.children);
+            priceLine.geometry.setAttribute(
+                'position',
+                new THREE.Float32BufferAttribute(positions, 3)
+            );
 
-            if (intersects.length > 0) {
-                const object = intersects[0].object;
-                tooltip.style.display = 'block';
-                tooltip.style.left = `${event.clientX + 10}px`;
-                tooltip.style.top = `${event.clientY - 30}px`;
-                tooltip.innerHTML = `
-                    <strong>Bitcoin Cube</strong><br>
-                    X: ${object.position.x.toFixed(2)}<br>
-                    Y: ${object.position.y.toFixed(2)}<br>
-                    Z: ${object.position.z.toFixed(2)}
-                `;
-            } else {
-                tooltip.style.display = 'none';
-            }
-        });
+            // Update tooltip
+            const lastPoint = priceData[priceData.length-1];
+            const tooltip = document.getElementById('3dTooltip');
+            tooltip.style.opacity = 1;
+            tooltip.innerHTML = `
+                <strong>Current Price:</strong> $${lastPoint.price.toFixed(2)}<br>
+                <strong>Change:</strong> ${lastPoint.delta.toFixed(2)}<br>
+                <strong>Time:</strong> ${lastPoint.time.toLocaleTimeString()}
+            `;
+        }
+
+        // Update statistik
+        function updateStats(currentPrice) {
+            const change = ((currentPrice - priceData[0].price) / priceData[0].price) * 100;
+            
+            document.getElementById('currentPrice3D').textContent = 
+                `$${currentPrice.toFixed(2)}`;
+                
+            document.getElementById('priceChange3D').textContent = 
+                `${change.toFixed(2)}%`;
+            
+            document.getElementById('priceChange3D').style.color = 
+                change > 0 ? '#44cc44' : '#ff4444';
+        }
+
+        // Animasi loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            cssRenderer.render(scene, camera);
+        }
 
         // Responsivitas
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            cssRenderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // Inisialisasi
+        init();
+        animate();
     </script>
 </body>
 </html>
