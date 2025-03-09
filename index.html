@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Immersive 3D Web Experience</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            text-align: center;
+        }
+
+        #tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 4px;
+            color: #fff;
+            display: none;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            #info {
+                padding: 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>3D Realtime Bitcoin Visualization</h2>
+        <p>Drag untuk memutar | Scroll untuk zoom | Klik untuk info</p>
+        <div id="tooltip"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Setup dasar Three.js
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x1a1a1a);
+        document.body.appendChild(renderer.domElement);
+
+        // Kontrol kamera
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        camera.position.z = 5;
+
+        // Membuat objek 3D
+        const geometry = new THREE.BoxGeometry();
+        const texture = new THREE.TextureLoader().load(
+            'https://threejs.org/examples/textures/crate.gif',
+            () => {
+                const material = new THREE.MeshPhongMaterial({ map: texture });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+
+                // Animasi
+                function animate() {
+                    requestAnimationFrame(animate);
+                    cube.rotation.x += 0.01;
+                    cube.rotation.y += 0.01;
+                    controls.update();
+                    renderer.render(scene, camera);
+                }
+                animate();
+            }
+        );
+
+        // Pencahayaan
+        const light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(10, 10, 10);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
+
+        // Tooltip interaksi
+        const tooltip = document.getElementById('tooltip');
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children);
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                tooltip.style.display = 'block';
+                tooltip.style.left = `${event.clientX + 10}px`;
+                tooltip.style.top = `${event.clientY - 30}px`;
+                tooltip.innerHTML = `
+                    <strong>Bitcoin Cube</strong><br>
+                    X: ${object.position.x.toFixed(2)}<br>
+                    Y: ${object.position.y.toFixed(2)}<br>
+                    Z: ${object.position.z.toFixed(2)}
+                `;
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+
+        // Responsivitas
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
