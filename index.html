@@ -148,10 +148,11 @@
     </div>
 
     <script>
-        const MAX_DATA_POINTS = 60;
-        const UPDATE_INTERVAL = 1000;
+        const MAX_DATA_AGE = 60000; // 1 menit
+        const UPDATE_INTERVAL = 1000; // 1 detik
         let data = [];
         let initialPrice = null;
+        let lastRender = Date.now();
 
         // D3 Setup
         const margin = { top: 20, right: 30, bottom: 40, left: 50 };
@@ -183,8 +184,9 @@
 
         // Update functions
         function updateChart() {
-            // Keep only last 60 data points
-            data = data.slice(-MAX_DATA_POINTS);
+            // Filter data lebih dari 1 menit
+            const now = Date.now();
+            data = data.filter(d => now - d.time <= MAX_DATA_AGE);
 
             // Update scales
             x.domain(d3.extent(data, d => d.time));
@@ -218,7 +220,7 @@
 
             svg.select(".y-axis")
                 .call(d3.axisLeft(y).ticks(5)
-                    .tickFormat(d => `$${d.toFixed(0)}`));
+                    .tickFormat(d => `$${d.toLocaleString()}`));
         }
 
         function updateStats() {
@@ -228,9 +230,16 @@
             const highPrice = d3.max(data, d => d.price);
             const lowPrice = d3.min(data, d => d.price);
             
+            // Format angka dengan penanda ribuan
+            const formatNumber = (num) => 
+                num.toLocaleString(undefined, { 
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2 
+                });
+
             // Update current price
             d3.select("#currentPrice p")
-                .text(`$${currentPrice.toFixed(2)}`);
+                .text(`$${formatNumber(currentPrice)}`);
                 
             // Update 24h change
             if (initialPrice) {
@@ -243,15 +252,15 @@
             }
 
             // Update high/low
-            d3.select("#highPrice p").text(`$${highPrice.toFixed(2)}`);
-            d3.select("#lowPrice p").text(`$${lowPrice.toFixed(2)}`);
+            d3.select("#highPrice p").text(`$${formatNumber(highPrice)}`);
+            d3.select("#lowPrice p").text(`$${formatNumber(lowPrice)}`);
         }
 
         function showTooltip(event, d) {
             d3.select(".tooltip")
                 .style("opacity", 1)
                 .html(`
-                    <div>Price: $${d.price.toFixed(2)}</div>
+                    <div>Price: $${d.price.toLocaleString()}</div>
                     <div>Time: ${d.time.toLocaleTimeString()}</div>
                 `)
                 .style("left", `${event.pageX}px`)
@@ -272,12 +281,18 @@
                 const time = new Date(msg.T);
 
                 data.push({ time, price });
-                if (!initialPrice) initialPrice = price;
+                
+                // Update initial price hanya sekali
+                if (!initialPrice) {
+                    initialPrice = price;
+                    updateStats();
+                }
 
-                // Throttle updates
-                if (Date.now() % UPDATE_INTERVAL < 16) {
+                // Update setiap detik
+                if (Date.now() - lastRender > UPDATE_INTERVAL) {
                     updateChart();
                     updateStats();
+                    lastRender = Date.now();
                 }
             } catch (e) {
                 console.error("Error:", e);
