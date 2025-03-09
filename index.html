@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimized Crypto Dashboard</title>
+    <title>Enhanced Crypto Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -12,7 +12,6 @@
             background-color: #121212;
             color: #e0e0e0;
             font-family: 'Segoe UI', sans-serif;
-            line-height: 1.6;
         }
 
         .dashboard {
@@ -22,6 +21,47 @@
 
         .header {
             margin-bottom: 1.5rem;
+        }
+
+        .connection-status {
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        #statusIndicator {
+            padding: 8px 16px;
+            border-radius: 16px;
+            transition: all 0.3s;
+        }
+
+        .online { 
+            background: #4CAF50;
+            color: white;
+        }
+
+        .offline { 
+            background: #ff4444;
+            color: white;
+        }
+
+        .timeframe-selector {
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .timeframe-selector button {
+            background: #3a3a3a;
+            border: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .timeframe-selector button.active {
+            background: #4CAF50;
+            color: white;
         }
 
         .chart-container {
@@ -122,6 +162,19 @@
             <p>Realtime market data with technical analysis</p>
         </div>
         
+        <!-- Connection Status -->
+        <div class="connection-status">
+            <span id="statusIndicator" class="offline">Connecting...</span>
+        </div>
+
+        <!-- Timeframe Selector -->
+        <div class="timeframe-selector">
+            <button onclick="setTimeframe(15)">15s</button>
+            <button onclick="setTimeframe(60)" class="active">1m</button>
+            <button onclick="setTimeframe(300)">5m</button>
+            <button onclick="setTimeframe(3600)">1h</button>
+        </div>
+
         <div class="chart-container">
             <div class="tooltip"></div>
             <svg viewBox="0 0 800 400"></svg>
@@ -150,7 +203,7 @@
     </div>
 
     <script>
-        const MAX_DATA_AGE = 60000; // 1 menit
+        let MAX_DATA_AGE = 60000; // Default 1 menit
         const UPDATE_INTERVAL = 1000; // 1 detik
         let data = [];
         let initialPrice = null;
@@ -254,8 +307,28 @@
         }
 
         // WebSocket handlers
-        ws.onopen = () => console.log("Connected to Binance");
-        
+        ws.onopen = () => {
+            document.getElementById('statusIndicator')
+                .classList.add('online')
+                .classList.remove('offline')
+                .textContent = 'Connected';
+        };
+
+        ws.onerror = (error) => {
+            document.getElementById('statusIndicator')
+                .classList.add('offline')
+                .classList.remove('online')
+                .textContent = 'Reconnecting...';
+            console.error("WebSocket Error:", error);
+        };
+
+        ws.onclose = () => {
+            document.getElementById('statusIndicator')
+                .classList.add('offline')
+                .classList.remove('online')
+                .textContent = 'Disconnected';
+        };
+
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data);
@@ -282,9 +355,14 @@
             }
         };
 
-        ws.onerror = (error) => {
-            console.error("WebSocket Error:", error);
-        };
+        // Timeframe control
+        function setTimeframe(seconds) {
+            MAX_DATA_AGE = seconds * 1000;
+            document.querySelectorAll('.timeframe-selector button')
+                .forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateChart();
+        }
 
         // Tooltip interaksi
         svg.on('touchmove mousemove', function(event) {
