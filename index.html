@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Dashboard Portal</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 2rem;
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .dashboard-portal {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .crypto-card {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 25px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .crypto-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .crypto-name {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .price-value {
+            font-size: 32px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+
+        .percent-change {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .positive {
+            color: #44cc44;
+        }
+
+        .negative {
+            color: #ff4444;
+        }
+
+        @media (max-width: 768px) {
+            .crypto-card {
+                padding: 15px;
+            }
+            
+            .crypto-name {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Crypto Market Portal</h1>
+        <p>Pilih aset untuk melihat dashboard lengkap</p>
+    </div>
+
+    <div class="dashboard-portal">
+        <div class="crypto-card" data-symbol="BTCUSDT" onclick="window.location='dashboard.html?symbol=BTCUSDT'">
+            <div class="crypto-name">Bitcoin (BTC)</div>
+            <div class="price-value" id="btcPrice">$0.00</div>
+            <div class="percent-change" id="btcChange">0.00%</div>
+        </div>
+        
+        <div class="crypto-card" data-symbol="ETHUSDT" onclick="window.location='dashboard.html?symbol=ETHUSDT'">
+            <div class="crypto-name">Ethereum (ETH)</div>
+            <div class="price-value" id="ethPrice">$0.00</div>
+            <div class="percent-change" id="ethChange">0.00%</div>
+        </div>
+        
+        <div class="crypto-card" data-symbol="BNBUSDT" onclick="window.location='dashboard.html?symbol=BNBUSDT'">
+            <div class="crypto-name">Binance Coin (BNB)</div>
+            <div class="price-value" id="bnbPrice">$0.00</div>
+            <div class="percent-change" id="bnbChange">0.00%</div>
+        </div>
+    </div>
+
+    <script>
+        const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT'];
+        const wsStreams = symbols.map(s => `${s.toLowerCase()}@ticker`).join('/');
+        const wsUrl = `wss://stream.binance.com:9443/stream?streams=${wsStreams}`;
+        const ws = new WebSocket(wsUrl);
+
+        // Format angka
+        const formatNumber = (num) => 
+            new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(num);
+
+        // Handler WebSocket
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                const stream = msg.stream.split('@')[0].toUpperCase();
+                const data = msg.data;
+
+                // Update data sesuai simbol
+                const card = document.querySelector(`[data-symbol="${stream}"]`);
+                if (card) {
+                    const priceEl = card.querySelector('.price-value');
+                    const changeEl = card.querySelector('.percent-change');
+                    
+                    priceEl.textContent = `$${formatNumber(data.c)}`;
+                    changeEl.textContent = `${data.P}%`;
+                    
+                    // Tambahkan kelas warna
+                    changeEl.className = 'percent-change';
+                    if (data.P > 0) changeEl.classList.add('positive');
+                    else if (data.P < 0) changeEl.classList.add('negative');
+                }
+            } catch (e) {
+                console.error("Error:", e);
+            }
+        };
+
+        // Initial data fetch
+        async function getInitialData() {
+            const responses = await Promise.all(
+                symbols.map(symbol => 
+                    fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
+                )
+            );
+            
+            const data = await Promise.all(responses.map(r => r.json()));
+            
+            data.forEach(item => {
+                const card = document.querySelector(`[data-symbol="${item.symbol}"]`);
+                if (card) {
+                    const priceEl = card.querySelector('.price-value');
+                    const changeEl = card.querySelector('.percent-change');
+                    
+                    priceEl.textContent = `$${formatNumber(item.lastPrice)}`;
+                    changeEl.textContent = `${item.priceChangePercent}%`;
+                    
+                    // Tambahkan kelas warna
+                    changeEl.className = 'percent-change';
+                    if (item.priceChangePercent > 0) changeEl.classList.add('positive');
+                    else if (item.priceChangePercent < 0) changeEl.classList.add('negative');
+                }
+            });
+        }
+
+        getInitialData();
+    </script>
+</body>
+</html>
