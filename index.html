@@ -2,158 +2,181 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Realtime Dashboard dengan D3.js</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stable Realtime Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 2rem;
+            margin: 1rem;
+            padding: 0 20px;
         }
-        .chart {
-            margin: 50px auto;
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
         }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
         .line {
             fill: none;
-            stroke: #69b3a2;
-            stroke-width: 3px;
+            stroke: #4CAF50;
+            stroke-width: 2px;
         }
+
         .tooltip {
             position: absolute;
-            background: #333;
-            color: #fff;
-            padding: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
             border-radius: 4px;
-            display: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                font-size: 14px;
+            }
+            
+            .chart-container {
+                height: 300px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Realtime Bitcoin Price Dashboard</h1>
-    <div class="tooltip"></div>
-    <svg class="chart" width="800" height="400"></svg>
+    <div class="container">
+        <h1>Realtime Bitcoin Price</h1>
+        <div class="chart-container">
+            <div class="tooltip"></div>
+            <svg viewBox="0 0 800 400"></svg>
+        </div>
+    </div>
 
     <script>
-        // Inisialisasi data
-        const maxDataPoints = 20;
+        // Konfigurasi
+        const MAX_DATA_AGE = 30000; // 30 detik window
+        const UPDATE_INTERVAL = 1000; // 1 detik
         let data = [];
+        let lastUpdate = Date.now();
 
         // Setup WebSocket
         const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
-        
-        // Konfigurasi SVG
-        const svg = d3.select(".chart");
+
+        // Inisialisasi D3
         const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-        const width = +svg.attr("width") - margin.left - margin.right;
-        const height = +svg.attr("height") - margin.top - margin.bottom;
+        const width = 800 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
 
-        // Skala waktu dan harga
-        const x = d3.scaleTime()
-            .range([margin.left, width - margin.right]);
+        const x = d3.scaleTime().range([margin.left, width]);
+        const y = d3.scaleLinear().range([height, margin.top]);
 
-        const y = d3.scaleLinear()
-            .range([height - margin.bottom, margin.top]);
-
-        // Garis
         const line = d3.line()
             .x(d => x(d.time))
             .y(d => y(d.price))
-            .curve(d3.curveBasis);
+            .curve(d3.curveMonotoneX);
 
-        // Sumbu
-        const xAxis = d3.axisBottom(x)
-            .ticks(5)
-            .tickFormat(d3.timeFormat("%H:%M:%S"));
+        const svg = d3.select("svg")
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
 
-        const yAxis = d3.axisLeft(y)
-            .ticks(5);
+        const xAxis = d3.axisBottom(x).ticks(5);
+        const yAxis = d3.axisLeft(y).ticks(5);
 
-        // Render awal
         svg.append("g")
             .attr("class", "x-axis")
-            .attr("transform", `translate(0,${height - margin.bottom})`);
+            .attr("transform", `translate(0,${height})`);
 
         svg.append("g")
             .attr("class", "y-axis")
             .attr("transform", `translate(${margin.left},0)`);
 
-        // Fungsi update grafik
-        function updateChart() {
+        // Fungsi update
+        function update() {
+            // Filter data lama
+            const now = Date.now();
+            data = data.filter(d => now - d.time <= MAX_DATA_AGE);
+
             // Update domain
             x.domain(d3.extent(data, d => d.time));
             y.domain([d3.min(data, d => d.price), d3.max(data, d => d.price)]);
 
             // Update garis
-            svg.selectAll(".line")
-                .data([data])
-                .join("path")
-                .attr("class", "line")
-                .attr("d", line)
-                .attr("transform", null)
-                .transition()
-                .duration(500)
-                .ease(d3.easeLinear);
-
-            // Update titik data
-            const dots = svg.selectAll(".dot")
-                .data(data);
-
-            dots.enter()
-                .append("circle")
-                .attr("class", "dot")
-                .attr("r", 5)
-                .merge(dots)
-                .attr("cx", d => x(d.time))
-                .attr("cy", d => y(d.price))
-                .on("mouseover", (event, d) => {
-                    d3.select(".tooltip")
-                        .style("display", "block")
-                        .html(`Waktu: ${d3.timeFormat("%H:%M:%S")(d.time)}<br>Harga: $${d.price}`)
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY - 20) + "px");
-                })
-                .on("mouseout", () => {
-                    d3.select(".tooltip").style("display", "none");
-                });
-
-            dots.exit().remove();
+            svg.select(".line")
+                .datum(data)
+                .attr("d", line);
 
             // Update sumbu
             svg.select(".x-axis")
-                .transition()
-                .duration(500)
-                .call(xAxis);
+                .call(xAxis)
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", "rotate(-45)");
 
             svg.select(".y-axis")
-                .transition()
-                .duration(500)
                 .call(yAxis);
         }
 
         // Handler WebSocket
         ws.onmessage = function(event) {
-            const message = JSON.parse(event.data);
-            
-            // Konversi data
-            const newData = {
-                time: new Date(message.T),
-                price: parseFloat(message.p)
-            };
+            try {
+                const msg = JSON.parse(event.data);
+                const price = parseFloat(msg.p);
+                const time = new Date(msg.T);
 
-            // Tambahkan ke dataset
-            data.push(newData);
-            
-            // Batasi jumlah data
-            if (data.length > maxDataPoints) {
-                data.shift();
+                // Throttle update untuk kinerja
+                if (Date.now() - lastUpdate > UPDATE_INTERVAL) {
+                    data.push({ time, price });
+                    update();
+                    lastUpdate = Date.now();
+                }
+            } catch (e) {
+                console.error("Error parsing data:", e);
             }
-
-            // Update grafik
-            updateChart();
         };
 
-        // Handler error WebSocket
-        ws.onerror = function(error) {
-            console.log('WebSocket Error:', error);
+        // Tooltip interaksi
+        svg.on('touchmove mousemove', function(event) {
+            const mouseX = d3.pointer(event)[0];
+            const bisect = d3.bisector(d => d.time).left;
+            const x0 = x.invert(mouseX);
+            const index = bisect(data, x0, 1);
+            const d0 = data[index - 1];
+            const d1 = data[index];
+            
+            if (!d0 || !d1) return;
+
+            const d = x0 - d0.time > d1.time - x0 ? d1 : d0;
+            
+            d3.select(".tooltip")
+                .style("opacity", 1)
+                .html(`Harga: $${d.price.toFixed(2)}<br>Waktu: ${d.time.toLocaleTimeString()}`)
+                .style("transform", `translate(${mouseX + 10}px, ${y(d.price) + margin.top - 20}px)`);
+        })
+        .on('mouseleave', () => {
+            d3.select(".tooltip").style("opacity", 0);
+        });
+
+        // Inisialisasi garis
+        svg.append("path").attr("class", "line");
+        
+        // Handler error
+        ws.onerror = error => {
+            console.error("WebSocket Error:", error);
+            setTimeout(() => ws.close(), 5000);
         };
     </script>
 </body>
