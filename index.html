@@ -2,57 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ary Wibowo - Professional Profile</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Contoh Visualisasi Data Interaktif</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+        }
+        .chart {
+            margin: 50px auto;
+        }
+        .line {
+            fill: none;
+            stroke: #69b3a2;
+            stroke-width: 3px;
+        }
+        .dot {
+            fill: #ff0000;
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+        .tooltip {
+            position: absolute;
+            background: #333;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <img src="profile.jpg" alt="Profile Picture" class="profile-img">
-        <h1>Ary Wibowo</h1>
-        <p>Professional in Human Resources and Project Management</p>
-    </header>
+    <h1>Contoh Grafik Interaktif dengan D3.js</h1>
+    <div class="tooltip"></div>
+    <svg class="chart" width="800" height="400"></svg>
 
-    <nav>
-        <ul>
-            <li><a href="#about">About Me</a></li>
-            <li><a href="#skills">Skills</a></li>
-            <li><a href="#experience">Experience</a></li>
-            <li><a href="#contact">Contact</a></li>
-        </ul>
-    </nav>
+    <script>
+        // Data contoh (format: [tahun, nilai])
+        const data = [
+            { year: 2010, value: 50 },
+            { year: 2011, value: 70 },
+            { year: 2012, value: 100 },
+            { year: 2013, value: 85 },
+            { year: 2014, value: 120 },
+            { year: 2015, value: 150 }
+        ];
 
-    <main>
-        <section id="about">
-            <h2>About Me</h2>
-            <p>Hello, I am Ary Wibowo, a professional with extensive experience in Human Resources management, project management, and telecommunications. I am proficient in various software tools and have a passion for technology and business.</p>
-        </section>
+        // Setup SVG
+        const svg = d3.select(".chart");
+        const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+        const width = +svg.attr("width") - margin.left - margin.right;
+        const height = +svg.attr("height") - margin.top - margin.bottom;
 
-        <section id="skills">
-            <h2>Skills</h2>
-            <ul>
-                <li>Human Resources Management</li>
-                <li>Project Management</li>
-                <li>Account Management</li>
-                <li>MS Excel, PowerPoint, Word, Visio</li>
-                <li>Proficient in English</li>
-            </ul>
-        </section>
+        // Skala
+        const x = d3.scaleLinear()
+            .domain(d3.extent(data, d => d.year))
+            .range([margin.left, width - margin.right]);
 
-        <section id="experience">
-            <h2>Experience</h2>
-            <p>With a career spanning various roles in prestigious companies, I have developed a deep understanding of project coordination, quality control, and administrative processes. I have led numerous projects, enhancing productivity and ensuring client satisfaction.</p>
-        </section>
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.value)])
+            .nice()
+            .range([height - margin.bottom, margin.top]);
 
-        <section id="contact">
-            <h2>Contact</h2>
-            <p>Email: ary.wibowo@example.com</p>
-            <p>LinkedIn: <a href="https://www.linkedin.com/in/boworesearch/" target="_blank">Ary Wibowo</a></p>
-        </section>
-    </main>
+        // Garis
+        const line = d3.line()
+            .x(d => x(d.year))
+            .y(d => y(d.value));
 
-    <footer>
-        <p>&copy; 2024 Ary Wibowo. All Rights Reserved.</p>
-    </footer>
+        // Gambar garis
+        svg.append("path")
+            .datum(data)
+            .attr("class", "line")
+            .attr("d", line);
+
+        // Tambahkan titik data
+        svg.selectAll(".dot")
+            .data(data)
+            .enter().append("circle")
+            .attr("class", "dot")
+            .attr("cx", d => x(d.year))
+            .attr("cy", d => y(d.value))
+            .attr("r", 5)
+            .on("mouseover", (event, d) => {
+                d3.select(".tooltip")
+                    .style("display", "block")
+                    .html(`Tahun: ${d.year}<br>Nilai: ${d.value}`)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 20) + "px");
+            })
+            .on("mouseout", () => {
+                d3.select(".tooltip").style("display", "none");
+            });
+
+        // Sumbu
+        svg.append("g")
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+            .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+
+        svg.append("g")
+            .attr("transform", `translate(${margin.left},0)`)
+            .call(d3.axisLeft(y));
+    </script>
 </body>
 </html>
