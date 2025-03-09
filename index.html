@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Contoh Visualisasi Data Interaktif</title>
+    <title>Realtime Dashboard dengan D3.js</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -17,11 +17,6 @@
             stroke: #69b3a2;
             stroke-width: 3px;
         }
-        .dot {
-            fill: #ff0000;
-            stroke: #fff;
-            stroke-width: 2px;
-        }
         .tooltip {
             position: absolute;
             background: #333;
@@ -33,75 +28,133 @@
     </style>
 </head>
 <body>
-    <h1>Contoh Grafik Interaktif dengan D3.js</h1>
+    <h1>Realtime Bitcoin Price Dashboard</h1>
     <div class="tooltip"></div>
     <svg class="chart" width="800" height="400"></svg>
 
     <script>
-        // Data contoh (format: [tahun, nilai])
-        const data = [
-            { year: 2010, value: 50 },
-            { year: 2011, value: 70 },
-            { year: 2012, value: 100 },
-            { year: 2013, value: 85 },
-            { year: 2014, value: 120 },
-            { year: 2015, value: 150 }
-        ];
+        // Inisialisasi data
+        const maxDataPoints = 20;
+        let data = [];
 
-        // Setup SVG
+        // Setup WebSocket
+        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+        
+        // Konfigurasi SVG
         const svg = d3.select(".chart");
         const margin = { top: 20, right: 30, bottom: 40, left: 50 };
         const width = +svg.attr("width") - margin.left - margin.right;
         const height = +svg.attr("height") - margin.top - margin.bottom;
 
-        // Skala
-        const x = d3.scaleLinear()
-            .domain(d3.extent(data, d => d.year))
+        // Skala waktu dan harga
+        const x = d3.scaleTime()
             .range([margin.left, width - margin.right]);
 
         const y = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d.value)])
-            .nice()
             .range([height - margin.bottom, margin.top]);
 
         // Garis
         const line = d3.line()
-            .x(d => x(d.year))
-            .y(d => y(d.value));
-
-        // Gambar garis
-        svg.append("path")
-            .datum(data)
-            .attr("class", "line")
-            .attr("d", line);
-
-        // Tambahkan titik data
-        svg.selectAll(".dot")
-            .data(data)
-            .enter().append("circle")
-            .attr("class", "dot")
-            .attr("cx", d => x(d.year))
-            .attr("cy", d => y(d.value))
-            .attr("r", 5)
-            .on("mouseover", (event, d) => {
-                d3.select(".tooltip")
-                    .style("display", "block")
-                    .html(`Tahun: ${d.year}<br>Nilai: ${d.value}`)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 20) + "px");
-            })
-            .on("mouseout", () => {
-                d3.select(".tooltip").style("display", "none");
-            });
+            .x(d => x(d.time))
+            .y(d => y(d.price))
+            .curve(d3.curveBasis);
 
         // Sumbu
+        const xAxis = d3.axisBottom(x)
+            .ticks(5)
+            .tickFormat(d3.timeFormat("%H:%M:%S"));
+
+        const yAxis = d3.axisLeft(y)
+            .ticks(5);
+
+        // Render awal
         svg.append("g")
-            .attr("transform", `translate(0,${height - margin.bottom})`)
-            .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0,${height - margin.bottom})`);
 
         svg.append("g")
-            .attr("transform", `translate(${margin.left},0)`)
-            .call(d3.axisLeft(y));
+            .attr("class", "y-axis")
+            .attr("transform", `translate(${margin.left},0)`);
+
+        // Fungsi update grafik
+        function updateChart() {
+            // Update domain
+            x.domain(d3.extent(data, d => d.time));
+            y.domain([d3.min(data, d => d.price), d3.max(data, d => d.price)]);
+
+            // Update garis
+            svg.selectAll(".line")
+                .data([data])
+                .join("path")
+                .attr("class", "line")
+                .attr("d", line)
+                .attr("transform", null)
+                .transition()
+                .duration(500)
+                .ease(d3.easeLinear);
+
+            // Update titik data
+            const dots = svg.selectAll(".dot")
+                .data(data);
+
+            dots.enter()
+                .append("circle")
+                .attr("class", "dot")
+                .attr("r", 5)
+                .merge(dots)
+                .attr("cx", d => x(d.time))
+                .attr("cy", d => y(d.price))
+                .on("mouseover", (event, d) => {
+                    d3.select(".tooltip")
+                        .style("display", "block")
+                        .html(`Waktu: ${d3.timeFormat("%H:%M:%S")(d.time)}<br>Harga: $${d.price}`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 20) + "px");
+                })
+                .on("mouseout", () => {
+                    d3.select(".tooltip").style("display", "none");
+                });
+
+            dots.exit().remove();
+
+            // Update sumbu
+            svg.select(".x-axis")
+                .transition()
+                .duration(500)
+                .call(xAxis);
+
+            svg.select(".y-axis")
+                .transition()
+                .duration(500)
+                .call(yAxis);
+        }
+
+        // Handler WebSocket
+        ws.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            
+            // Konversi data
+            const newData = {
+                time: new Date(message.T),
+                price: parseFloat(message.p)
+            };
+
+            // Tambahkan ke dataset
+            data.push(newData);
+            
+            // Batasi jumlah data
+            if (data.length > maxDataPoints) {
+                data.shift();
+            }
+
+            // Update grafik
+            updateChart();
+        };
+
+        // Handler error WebSocket
+        ws.onerror = function(error) {
+            console.log('WebSocket Error:', error);
+        };
     </script>
 </body>
 </html>
